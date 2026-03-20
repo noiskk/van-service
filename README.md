@@ -7,6 +7,9 @@ VAN은 결제 요청이 유효성을 검증한다.
 <br>
 카드사의 응답을 POS에 전달한다.
 
+<img width="863" height="586" alt="van-service 플로우" src="https://github.com/user-attachments/assets/30502bbe-400c-4779-9140-316a4a724d8e" />
+
+
 ## 🌐 API Endpoints
 | Method | URI | Description |
 |---|---|---|
