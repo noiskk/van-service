@@ -22,14 +22,24 @@ public class PaymentGatwayService {
                 .build();
     }
 
-    // FDS의 응답(FdsInspectResponse)과 원래 요청 금액(amount)을 합쳐서 최종 응답을 만듭니다.
     public PaymentGatewayResponse createResponse(FdsInspectResponse fdsResponse, Long originalAmount){
+        // 방어 로직: FDS 서버가 응답 메시지를 빼먹고 보냈을 경우를 대비
+        String message = fdsResponse.getResponseMessage();
+        if (message == null || message.trim().isEmpty()) {
+            message = "결제가 정상적으로 승인되었습니다.";
+        }
+
+        String code = fdsResponse.getResponseCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = "00"; // 기본 승인 코드
+        }
+
         return PaymentGatewayResponse.builder()
-                .success(fdsResponse.isSuccess())
+                .success(true)
                 .transactionId(fdsResponse.getTransactionId())
-                .amount(originalAmount) // 최종 응답에 금액 포함
-                .responseCode(fdsResponse.getResponseCode())
-                .responseMessage(fdsResponse.getResponseMessage())
+                .amount(originalAmount)
+                .responseCode(code)
+                .responseMessage(message)
                 .build();
     }
 }

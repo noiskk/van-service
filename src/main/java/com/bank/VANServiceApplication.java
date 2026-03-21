@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 
 /**
- * 은행 서비스 애플리케이션
+ * VAN 서비스 애플리케이션
  */
 @EnableFeignClients
 @SpringBootApplication

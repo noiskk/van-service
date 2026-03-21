@@ -1,6 +1,6 @@
 package com.bank.controller;
 
-import com.bank.api.CardFdsClient; // 패키지 경로에 맞게 확인해주세요!
+import com.bank.api.CardFdsClient;
 import com.bank.dto.FdsInspectRequest;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
@@ -40,7 +40,6 @@ public class PaymentGatewayController {
 
         try {
             if (request.getAmount() == null || request.getAmount() <= 0) {
-                log.warn("요청 실패: 유효하지 않은 금액");
                 return buildErrorResponse("96", "결제 금액은 0보다 커야 합니다", HttpStatus.BAD_REQUEST);
             }
 
@@ -50,11 +49,23 @@ public class PaymentGatewayController {
             // 2. FDS 통신
             var fdsResponse = cardFdsClient.inspect(fdsRequest);
 
-            // 3. 응답 객체 변환 (원래 결제 금액도 같이 넘겨줌)
+            // 3. 응답 객체 변환
             PaymentGatewayResponse response = paymentGatwayService.createResponse(fdsResponse, request.getAmount());
 
-            log.info("요청이 정상적으로 처리 되었습니다.: cardNum={}, amount={}, merchantId={}",
-                    request.getCardNum(), request.getAmount(), request.getMerchantId());
+            // Service에서 넘어온 결과 상태를 체크해서 로그와 데이터를 분기
+            if (response.isSuccess()) {
+                log.info("✅ 정상 승인 처리 되었습니다: cardNum={}, amount={}", request.getCardNum(), request.getAmount());
+            } else {
+                // 비즈니스 로직(한도 초과 등) 거절인데 메시지가 비어있다면 강제로 채워줍니다.
+                String errMsg = (response.getResponseMessage() != null) ? response.getResponseMessage() : "결제가 거절되었습니다. (카드사 문의)";
+                log.warn("❌ 결제 거절(비즈니스 사유): {}", errMsg);
+
+                response = PaymentGatewayResponse.builder()
+                        .success(false)
+                        .responseCode("51")
+                        .responseMessage(errMsg)
+                        .build();
+            }
 
             EntityModel<PaymentGatewayResponse> entityModel = EntityModel.of(response);
             WebMvcLinkBuilder selfLink = linkTo(methodOn(PaymentGatewayController.class).requestPayment(request));
@@ -63,10 +74,17 @@ public class PaymentGatewayController {
             return ResponseEntity.ok(entityModel);
 
         } catch (FeignException e) {
-            // 외부 FDS 서버가 응답이 없거나 통신 에러가 난 경우
-            log.error("FDS 서버 통신 오류: status={}, message={}", e.status(), e.getMessage());
-            return buildErrorResponse("96", "카드사 네트워크 오류가 발생했습니다", HttpStatus.INTERNAL_SERVER_ERROR);
+            log.error("FDS 차단 발생: status={}, body={}", e.status(), e.contentUTF8());
 
+            String errorMessage = "카드사 연동 오류";
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                errorMessage = mapper.readTree(e.contentUTF8()).path("message").asText();
+            } catch (Exception parseEx) {
+                errorMessage = e.contentUTF8();
+            }
+
+            return buildErrorResponse("51", errorMessage, HttpStatus.OK);
         } catch (Exception e) {
             log.error("결제 처리 실패 - 시스템 오류: {}", e.getMessage(), e);
             return buildErrorResponse("96", "시스템 내부 오류가 발생했습니다", HttpStatus.INTERNAL_SERVER_ERROR);

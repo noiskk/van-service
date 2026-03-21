@@ -5,6 +5,7 @@
 *.ipr
 /shelf/
 /workspace.xml
+bin/
 
 # Gradle
 .gradle/
