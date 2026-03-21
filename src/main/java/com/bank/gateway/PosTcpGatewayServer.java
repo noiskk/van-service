@@ -77,7 +77,6 @@ public class PosTcpGatewayServer {
                             .cardNum(cardNumber)
                             .amount(amount)
                             .merchantId(merchantId)
-                            .cardType("CREDIT")
                             .build();
 
                     ResponseEntity<EntityModel<PaymentGatewayResponse>> responseEntity =

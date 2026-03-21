@@ -18,7 +18,6 @@ public class PaymentGatwayService {
                 .cardNum(request.getCardNum())
                 .amount(request.getAmount())
                 .merchantId(request.getMerchantId())
-                .cardType(request.getCardType())
                 .build();
     }
 
