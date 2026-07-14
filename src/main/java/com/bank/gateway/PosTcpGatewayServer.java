@@ -84,7 +84,10 @@ public class PosTcpGatewayServer {
 
                     PaymentGatewayResponse pgResponse = responseEntity.getBody().getContent();
                     boolean isSuccess = pgResponse.isSuccess();
-                    String responseCode = isSuccess ? "00" : "51";
+                    // payment가 내려준 실제 코드를 그대로 POS로 전달 (없을 때만 00/51로 보정)
+                    String responseCode = (pgResponse.getResponseCode() != null && !pgResponse.getResponseCode().isBlank())
+                            ? pgResponse.getResponseCode()
+                            : (isSuccess ? "00" : "51");
 
                     // 메시지가 null이면 기본 텍스트 세팅
                     String responseMsg = pgResponse.getResponseMessage();

@@ -56,13 +56,17 @@ public class PaymentGatewayController {
             if (response.isSuccess()) {
                 log.info("✅ 정상 승인 처리 되었습니다: cardNum={}, amount={}", request.getCardNum(), request.getAmount());
             } else {
-                // 비즈니스 로직(한도 초과 등) 거절인데 메시지가 비어있다면 강제로 채워줍니다.
-                String errMsg = (response.getResponseMessage() != null) ? response.getResponseMessage() : "결제가 거절되었습니다. (카드사 문의)";
-                log.warn("❌ 결제 거절(비즈니스 사유): {}", errMsg);
+                // 거절: payment가 내려준 실제 응답코드(51/61/96 등)를 그대로 보존한다.
+                String errMsg = (response.getResponseMessage() != null && !response.getResponseMessage().isBlank())
+                        ? response.getResponseMessage()
+                        : "결제가 거절되었습니다. (카드사 문의)";
+                log.warn("❌ 결제 거절(비즈니스 사유): code={}, msg={}", response.getResponseCode(), errMsg);
 
                 response = PaymentGatewayResponse.builder()
                         .success(false)
-                        .responseCode("51")
+                        .transactionId(response.getTransactionId())
+                        .amount(response.getAmount())
+                        .responseCode(response.getResponseCode())   // 51 하드코딩 제거 → 실제 코드 유지
                         .responseMessage(errMsg)
                         .build();
             }
