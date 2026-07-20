@@ -4,32 +4,35 @@ import com.bank.api.CardFdsClient;
 import com.bank.dto.FdsInspectResponse;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
+import com.bank.exception.GlobalExceptionHandler;
 import com.bank.service.PaymentGatwayService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.http.ResponseEntity;
-import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * VAN 응답코드 보존(fidelity) 회귀 테스트.
- * 예전에는 거절 시 응답코드가 무조건 "51"로 덮여 61/96 이 사라졌다.
- * 이 테스트는 payment가 내려준 실제 코드가 그대로 보존되는지 검증한다.
+ * PaymentGatewayController 예외처리 & 응답코드 relay 검증.
+ * VAN은 중계자라 예외가 InvalidRequest(잘못된 요청)/DownstreamCallFailed(FDS 다운) 둘뿐이고,
+ * 카드사의 정상 거절(61 등)은 예외가 아니라 그대로 relay된다.
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("VAN 응답코드 보존 테스트")
+@DisplayName("PaymentGatewayController - 예외처리 & 응답코드 relay 테스트")
 class PaymentGatewayControllerTest {
 
     @Mock
@@ -38,29 +41,30 @@ class PaymentGatewayControllerTest {
     @Mock
     private CardFdsClient cardFdsClient;
 
-    @InjectMocks
-    private PaymentGatewayController controller;
+    private MockMvc mockMvc;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        // 컨트롤러가 HATEOAS self-link를 만들 때 "현재 웹 요청" 정보가 필요하다.
-        // 단위 테스트에는 진짜 요청이 없으니 가짜 요청을 하나 끼워준다.
-        RequestContextHolder.setRequestAttributes(
-                new ServletRequestAttributes(new MockHttpServletRequest()));
+        PaymentGatewayController controller = new PaymentGatewayController(paymentGatwayService, cardFdsClient);
+        mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+    }
+
+    private String requestJson(Long amount) throws Exception {
+        PaymentGatewayRequest req = PaymentGatewayRequest.builder()
+                .cardNum("1111222233334444")
+                .amount(amount)
+                .merchantId("M1")
+                .build();
+        return objectMapper.writeValueAsString(req);
     }
 
     @Test
-    @DisplayName("한도초과(61) 거절 시 응답코드가 51로 뭉개지지 않고 61 그대로 유지된다")
-    void declineCode61_isPreserved() {
-        PaymentGatewayRequest req = PaymentGatewayRequest.builder()
-                .cardNum("1111222233334444")
-                .amount(999_999L)
-                .merchantId("M1")
-                .build();
-
-        // FDS 통신은 통과했다고 가정
+    @DisplayName("카드사 거절코드(61)가 51로 뭉개지지 않고 그대로 relay된다 (0단계 회귀)")
+    void declineCode61_isPreserved() throws Exception {
         when(cardFdsClient.inspect(any())).thenReturn(FdsInspectResponse.builder().build());
-        // 카드사(payment)가 "61 한도초과"로 거절한 상황을 흉내
         when(paymentGatwayService.createResponse(any(), eq(999_999L))).thenReturn(
                 PaymentGatewayResponse.builder()
                         .success(false)
@@ -70,12 +74,34 @@ class PaymentGatewayControllerTest {
                         .amount(999_999L)
                         .build());
 
-        ResponseEntity<EntityModel<PaymentGatewayResponse>> res = controller.requestPayment(req);
-        PaymentGatewayResponse body = res.getBody().getContent();
+        mockMvc.perform(post("/api/van/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(999_999L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.responseCode").value("61"))
+                .andExpect(jsonPath("$.responseMessage").value("1회 결제 한도 초과"))
+                .andExpect(jsonPath("$.success").value(false));
+    }
 
-        // 예전엔 여기서 51로 뭉개졌다. 이제 61이 유지되어야 한다.
-        assertThat(body.getResponseCode()).isEqualTo("61");
-        assertThat(body.getResponseMessage()).isEqualTo("1회 결제 한도 초과");
-        assertThat(body.isSuccess()).isFalse();
+    @Test
+    @DisplayName("금액 0 이하(InvalidRequestException) -> HTTP 400")
+    void invalidAmount_returns400() throws Exception {
+        mockMvc.perform(post("/api/van/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(0L)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.responseCode").value("96"));
+    }
+
+    @Test
+    @DisplayName("FDS 다운(FeignException) -> HTTP 503 (시스템 실패로 전파)")
+    void fdsDown_returns503() throws Exception {
+        when(cardFdsClient.inspect(any())).thenThrow(mock(FeignException.class));
+
+        mockMvc.perform(post("/api/van/payments")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson(50_000L)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.responseCode").value("96"));
     }
 }
