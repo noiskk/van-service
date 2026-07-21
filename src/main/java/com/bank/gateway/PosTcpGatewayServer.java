@@ -69,14 +69,20 @@ public class PosTcpGatewayServer {
                     String cardNumber = isoReq.getObjectValue(2);
                     String amountStr = isoReq.getObjectValue(4);
                     Long amount = Long.parseLong(amountStr) / 100;
+                    String stan = isoReq.getObjectValue(11);
                     String merchantId = isoReq.getObjectValue(42);
 
-                    log.info("[VAN] 추출된 데이터 - 카드: {}, 금액: {}, 가맹점: {}", cardNumber, amount, merchantId);
+                    // 멱등키 = 가맹점ID + STAN (원점 POS가 만든 거래추적번호)
+                    String idempotencyKey = merchantId + "-" + stan;
+
+                    log.info("[VAN] 추출된 데이터 - 카드: {}, 금액: {}, 가맹점: {}, 멱등키: {}",
+                            cardNumber, amount, merchantId, idempotencyKey);
 
                     PaymentGatewayRequest pgRequest = PaymentGatewayRequest.builder()
                             .cardNum(cardNumber)
                             .amount(amount)
                             .merchantId(merchantId)
+                            .idempotencyKey(idempotencyKey)
                             .build();
 
                     ResponseEntity<EntityModel<PaymentGatewayResponse>> responseEntity =

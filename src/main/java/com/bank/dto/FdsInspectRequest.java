@@ -16,4 +16,5 @@ public class FdsInspectRequest {
     private Long amount;
     private String merchantId;
     private String cardType;
+    private String idempotencyKey;
 }

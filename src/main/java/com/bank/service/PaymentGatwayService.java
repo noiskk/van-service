@@ -18,6 +18,7 @@ public class PaymentGatwayService {
                 .cardNum(request.getCardNum())
                 .amount(request.getAmount())
                 .merchantId(request.getMerchantId())
+                .idempotencyKey(request.getIdempotencyKey())
                 .build();
     }
 

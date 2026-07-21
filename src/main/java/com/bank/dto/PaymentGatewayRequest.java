@@ -19,4 +19,5 @@ public class PaymentGatewayRequest {
     private String cardNum;
     private Long amount;
     private String merchantId;
+    private String idempotencyKey;
 }
