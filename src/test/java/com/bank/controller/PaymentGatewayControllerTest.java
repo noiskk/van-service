@@ -1,6 +1,6 @@
 package com.bank.controller;
 
-import com.bank.api.CardFdsClient;
+import com.bank.api.CardIssuerClient;
 import com.bank.dto.FdsInspectResponse;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
@@ -39,14 +39,14 @@ class PaymentGatewayControllerTest {
     private PaymentGatwayService paymentGatwayService;
 
     @Mock
-    private CardFdsClient cardFdsClient;
+    private CardIssuerClient cardIssuerClient;
 
     private MockMvc mockMvc;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @BeforeEach
     void setUp() {
-        PaymentGatewayController controller = new PaymentGatewayController(paymentGatwayService, cardFdsClient);
+        PaymentGatewayController controller = new PaymentGatewayController(paymentGatwayService, cardIssuerClient);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -64,7 +64,7 @@ class PaymentGatewayControllerTest {
     @Test
     @DisplayName("카드사 거절코드(61)가 51로 뭉개지지 않고 그대로 relay된다 (0단계 회귀)")
     void declineCode61_isPreserved() throws Exception {
-        when(cardFdsClient.inspect(any())).thenReturn(FdsInspectResponse.builder().build());
+        when(cardIssuerClient.requestApproval(any())).thenReturn(FdsInspectResponse.builder().build());
         when(paymentGatwayService.createResponse(any(), eq(999_999L))).thenReturn(
                 PaymentGatewayResponse.builder()
                         .success(false)
@@ -96,7 +96,7 @@ class PaymentGatewayControllerTest {
     @Test
     @DisplayName("FDS 다운(FeignException) -> HTTP 503 (시스템 실패로 전파)")
     void fdsDown_returns503() throws Exception {
-        when(cardFdsClient.inspect(any())).thenThrow(mock(FeignException.class));
+        when(cardIssuerClient.requestApproval(any())).thenThrow(mock(FeignException.class));
 
         mockMvc.perform(post("/api/van/payments")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -1,6 +1,6 @@
 package com.bank.controller;
 
-import com.bank.api.CardFdsClient;
+import com.bank.api.CardIssuerClient;
 import com.bank.dto.FdsInspectRequest;
 import com.bank.dto.FdsInspectResponse;
 import com.bank.dto.PaymentGatewayRequest;
@@ -31,7 +31,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 public class PaymentGatewayController {
 
     private final PaymentGatwayService paymentGatwayService;
-    private final CardFdsClient cardFdsClient;
+    private final CardIssuerClient cardIssuerClient;
 
     @Operation(summary = "카드 거래 요청", description = "카드사 승인 요청을 보냅니다.")
     @PostMapping("/payments")
@@ -45,20 +45,20 @@ public class PaymentGatewayController {
         }
 
         // 1. 요청 객체를 카드사 규격으로 변환
-        FdsInspectRequest fdsRequest = paymentGatwayService.createFdsRequest(request);
+        FdsInspectRequest approvalRequest = paymentGatwayService.createFdsRequest(request);
 
-        // 2. FDS(카드사)로 중계
-        //    이상거래 차단/한도초과 등 비즈니스 결과는 이제 200으로 오므로 그대로 relay된다.
-        //    FDS가 진짜로 죽었을 때만 FeignException -> 시스템 실패로 전파.
-        FdsInspectResponse fdsResponse;
+        // 2. 카드사 게이트웨이로 중계
+        //    이상거래 차단/한도초과 등 비즈니스 결과는 200으로 오므로 그대로 relay된다.
+        //    카드사가 진짜로 죽었을 때만 FeignException -> 시스템 실패로 전파.
+        FdsInspectResponse approvalResponse;
         try {
-            fdsResponse = cardFdsClient.inspect(fdsRequest);
+            approvalResponse = cardIssuerClient.requestApproval(approvalRequest);
         } catch (FeignException e) {
             throw new DownstreamCallFailedException(request.getAmount(), e);
         }
 
         // 3. 카드사 응답을 POS 규격으로 변환하여 relay (응답코드/메시지 보정은 서비스가 담당)
-        PaymentGatewayResponse response = paymentGatwayService.createResponse(fdsResponse, request.getAmount());
+        PaymentGatewayResponse response = paymentGatwayService.createResponse(approvalResponse, request.getAmount());
 
         if (response.isSuccess()) {
             log.info("✅ 정상 승인: cardNum={}, amount={}", request.getCardNum(), request.getAmount());

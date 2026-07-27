@@ -10,6 +10,11 @@ server:
       enabled: true
       force: true
 
+# 카드사(외부 회사) 게이트웨이 — VAN은 카드사 내부 서비스를 직접 알지 않는다
+card:
+  issuer:
+    url: ${CARD_ISSUER_URL:http://localhost:9000}
+
 logging:
   level:
     com.card.payment: DEBUG
