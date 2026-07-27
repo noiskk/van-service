@@ -2,6 +2,9 @@ spring:
   application:
     name: VAN-service
 
+  thymeleaf:
+    cache: false
+
   # Feign 타임아웃 — 응답 없는 하위 서비스에 매달려 있지 않게 한다.
   # 타임아웃이 나야 '불확실 거래'로 분류되고 대사 대상이 된다.
   cloud:
