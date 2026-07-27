@@ -1,6 +1,7 @@
 package com.bank.controller;
 
 import com.bank.api.CardIssuerClient;
+import com.bank.service.RelayHistory;
 import com.bank.dto.FdsInspectResponse;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
@@ -46,7 +47,7 @@ class PaymentGatewayControllerTest {
 
     @BeforeEach
     void setUp() {
-        PaymentGatewayController controller = new PaymentGatewayController(paymentGatwayService, cardIssuerClient);
+        PaymentGatewayController controller = new PaymentGatewayController(paymentGatwayService, cardIssuerClient, new RelayHistory());
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();

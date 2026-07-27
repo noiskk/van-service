@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>VAN 중계 모니터 — VAN-service</title>
+    <meta http-equiv="refresh" content="3">
+    <style>
+        :root { --bg:#0f172a; --card:#1e293b; --line:#334155; --text:#e2e8f0; --dim:#94a3b8;
+                --ok:#4ade80; --bad:#f87171; --accent:#38bdf8; }
+        * { box-sizing:border-box; }
+        body { margin:0; padding:32px; background:var(--bg); color:var(--text);
+               font-family:'Noto Sans KR',-apple-system,sans-serif; }
+        h1 { font-size:20px; font-weight:500; margin:0 0 4px; }
+        h2 { font-size:15px; font-weight:500; margin:28px 0 12px; color:var(--dim); }
+        .sub { color:var(--dim); font-size:13px; }
+        .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px;
+                 background:#0369a1; color:#e0f2fe; margin-left:8px; }
+        .kpi { display:flex; gap:12px; margin:16px 0; }
+        .kpi div { background:var(--card); border:1px solid var(--line); border-radius:10px;
+                   padding:12px 18px; font-size:13px; color:var(--dim); }
+        .kpi b { display:block; font-size:22px; font-weight:500; margin-top:2px; color:var(--text); }
+        .flow { background:var(--card); border:1px solid var(--line); border-radius:12px;
+                padding:16px; font-size:13px; font-family:ui-monospace,monospace;
+                color:var(--dim); line-height:1.9; }
+        .flow b { color:var(--accent); font-weight:500; }
+        table { width:100%; border-collapse:collapse; background:var(--card);
+                border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+        th { text-align:left; font-weight:500; font-size:12px; color:var(--dim);
+             padding:10px 12px; border-bottom:1px solid var(--line); }
+        td { padding:10px 12px; font-size:13px; border-bottom:1px solid #263449; }
+        tr:last-child td { border-bottom:none; }
+        .mono { font-family:ui-monospace,monospace; font-size:12px; }
+        .st { font-size:12px; padding:2px 8px; border-radius:999px; white-space:nowrap; }
+        .ok { background:#14532d; color:var(--ok); }
+        .ng { background:#7f1d1d; color:var(--bad); }
+        .ch { font-size:11px; padding:2px 7px; border-radius:6px; background:#1e3a8a; color:#bfdbfe; }
+        .empty { padding:20px; color:var(--dim); font-size:13px; text-align:center;
+                 background:var(--card); border:1px solid var(--line); border-radius:12px; }
+        .foot { margin-top:24px; color:var(--dim); font-size:12px; line-height:1.7; }
+    </style>
+</head>
+<body>
+    <h1>📡 VAN 중계 모니터 <span class="badge">VAN-service :7070 / TCP :7777</span></h1>
+    <div class="sub">가맹점 단말과 카드사를 잇는 중계사. 승인 판단은 하지 않고 전문을 전달한다. · 3초마다 자동 새로고침</div>
+
+    <div class="kpi">
+        <div>중계 건수<b th:text="${#lists.size(entries)}">0</b></div>
+        <div>승인<b th:text="${approvedCount}">0</b></div>
+    </div>
+
+    <h2>중계 경로</h2>
+    <div class="flow">
+        POS 단말 <b>──ISO 8583 / TCP:7777──▶</b> VAN <b>──HTTP──▶</b> 카드사 게이트웨이(:9000)<br>
+        <span style="font-size:12px">
+            VAN은 카드사 내부에 서비스가 몇 개인지 모른다. 게이트웨이 주소 하나만 알고 있다.
+        </span>
+    </div>
+
+    <h2>최근 중계 내역</h2>
+    <div th:if="${#lists.isEmpty(entries)}" class="empty">아직 중계된 거래가 없습니다. POS 단말에서 결제해보세요.</div>
+    <table th:unless="${#lists.isEmpty(entries)}">
+        <tr><th>시각</th><th>채널</th><th>카드번호</th><th>금액</th><th>가맹점</th><th>멱등키</th><th>코드</th><th>결과</th></tr>
+        <tr th:each="e : ${entries}">
+            <td class="mono" th:text="${#temporals.format(e.at,'HH:mm:ss')}">12:00:00</td>
+            <td><span class="ch" th:text="${e.channel}">TCP</span></td>
+            <td class="mono" th:text="${e.cardNum}">4111111111111111</td>
+            <td th:text="${e.amount} != null ? ${#numbers.formatInteger(e.amount,3,'COMMA')} : '-'">50,000</td>
+            <td th:text="${e.merchantId}">MERCHANT-001</td>
+            <td class="mono" th:text="${e.idempotencyKey} ?: '-'">MERCHANT-001-000123</td>
+            <td class="mono" th:text="${e.responseCode}">00</td>
+            <td>
+                <span class="st" th:classappend="${e.success} ? 'ok' : 'ng'"
+                      th:text="${e.success} ? '승인' : '거절'">승인</span>
+            </td>
+        </tr>
+    </table>
+
+    <div class="foot">
+        <b>멱등키</b>는 POS가 전문에 실어 보낸 STAN(ISO 8583 field 11)에 가맹점ID를 조합해 VAN이 만든다.
+        재시도가 와도 같은 값이라 카드사가 중복 결제를 걸러낼 수 있다.<br>
+        VAN은 거래를 저장하지 않는다. 이 목록은 시연용 인메모리 버퍼라 재기동하면 사라진다.
+    </div>
+</body>
+</html>

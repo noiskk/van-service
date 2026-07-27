@@ -8,6 +8,7 @@ import com.bank.dto.PaymentGatewayResponse;
 import com.bank.exception.DownstreamCallFailedException;
 import com.bank.exception.InvalidRequestException;
 import com.bank.service.PaymentGatwayService;
+import com.bank.service.RelayHistory;
 import feign.FeignException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestContextHolder;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -32,6 +34,7 @@ public class PaymentGatewayController {
 
     private final PaymentGatwayService paymentGatwayService;
     private final CardIssuerClient cardIssuerClient;
+    private final RelayHistory relayHistory;
 
     @Operation(summary = "카드 거래 요청", description = "카드사 승인 요청을 보냅니다.")
     @PostMapping("/payments")
@@ -59,6 +62,12 @@ public class PaymentGatewayController {
 
         // 3. 카드사 응답을 POS 규격으로 변환하여 relay (응답코드/메시지 보정은 서비스가 담당)
         PaymentGatewayResponse response = paymentGatwayService.createResponse(approvalResponse, request.getAmount());
+
+        // POS가 TCP로 보낸 전문은 이 메서드를 직접 호출하므로 HTTP 요청 컨텍스트가 없다. 그걸로 채널을 구분한다.
+        String channel = (RequestContextHolder.getRequestAttributes() != null) ? "HTTP" : "TCP";
+        relayHistory.record(channel, request.getCardNum(), request.getAmount(), request.getMerchantId(),
+                request.getIdempotencyKey(), response.getResponseCode(), response.getResponseMessage(),
+                response.isSuccess());
 
         if (response.isSuccess()) {
             log.info("✅ 정상 승인: cardNum={}, amount={}", request.getCardNum(), request.getAmount());
