@@ -30,10 +30,6 @@ background:var(--line);border:1px solid var(--line);margin-bottom:20px}
 .sec{font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;
 margin:22px 0 8px;display:flex;align-items:center;gap:10px}
 .sec::after{content:'';flex:1;height:1px;background:var(--line)}
-.route{background:var(--panel);border:1px solid var(--line);padding:11px 14px;
-font-size:12px;color:var(--dim);letter-spacing:.02em}
-.route b{color:var(--tx);font-weight:600}
-.route i{color:var(--acc);font-style:normal}
 .tw{overflow-x:auto;border:1px solid var(--line)}
 .tw table{border:none !important}
 table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line)}
@@ -80,20 +76,31 @@ background:#0f2036;color:#6fb1ff;border:1px solid #1b3a5c}
     <div class="tile"><div class="k">승인 금액</div><div class="v" th:text="${#numbers.formatInteger(amountTotal,1,'COMMA')}">0</div></div>
   </div>
 
-  <div class="sec">라우팅</div>
-  <div class="route">
-    <b>POS</b> <i>──ISO 8583 / TCP:7777──▶</i> <b>VAN</b> <i>──HTTP──▶</i> <b>card-gateway:9000</b>
-  </div>
+  <div class="sec">카드사 라우팅 테이블 <span class="dim" style="letter-spacing:0;text-transform:none">카드번호 BIN으로 발급 카드사 판별</span></div>
+  <div class="tw"><table>
+    <thead><tr><th>카드사</th><th>코드</th><th>엔드포인트</th><th>BIN 대역</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr th:each="i : ${issuers}">
+        <td th:text="${i.name}">에이카드</td>
+        <td class="dim" th:text="${i.code}">A_CARD</td>
+        <td class="dim" th:text="${i.url}">http://localhost:9000</td>
+        <td class="dim" th:text="${#strings.listJoin(i.bins, ', ')}">411111, 555555</td>
+        <td><span class="pill" th:classappend="${i.enabled} ? 'p-ok' : 'p-bad'"
+                  th:text="${i.enabled} ? 'ACTIVE' : 'DISABLED'">ACTIVE</span></td>
+      </tr>
+    </tbody>
+  </table></div>
 
   <div class="sec">중계 내역 <span class="dim" style="letter-spacing:0;text-transform:none">최근 50건</span></div>
   <div th:if="${#lists.isEmpty(entries)}" class="empty">NO RELAY TRAFFIC</div>
   <div class="tw"><table th:unless="${#lists.isEmpty(entries)}">
-    <thead><tr><th>시각</th><th>채널</th><th>카드번호</th><th class="num">금액</th><th>가맹점</th><th>멱등키</th><th>코드</th><th>결과</th></tr></thead>
+    <thead><tr><th>시각</th><th>채널</th><th>카드번호</th><th>카드사</th><th class="num">금액</th><th>가맹점</th><th>멱등키</th><th>코드</th><th>결과</th></tr></thead>
     <tbody>
       <tr th:each="e : ${entries}">
         <td class="dim" th:text="${#temporals.format(e.at,'HH:mm:ss')}">12:00:00</td>
         <td><span class="ch" th:text="${e.channel}">TCP</span></td>
         <td th:text="${e.cardNum}">4111111111111111</td>
+        <td class="dim" th:text="${e.issuerCode} ?: '—'">A_CARD</td>
         <td class="num" th:text="${e.amount} != null ? ${#numbers.formatInteger(e.amount,1,'COMMA')} : '—'">50,000</td>
         <td class="dim" th:text="${e.merchantId}">MERCHANT-001</td>
         <td class="dim" th:text="${e.idempotencyKey} ?: '—'">MERCHANT-001-000123</td>

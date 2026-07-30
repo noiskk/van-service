@@ -24,10 +24,32 @@ server:
       enabled: true
       force: true
 
-# 카드사(외부 회사) 게이트웨이 — VAN은 카드사 내부 서비스를 직접 알지 않는다
-card:
-  issuer:
-    url: ${CARD_ISSUER_URL:http://localhost:9000}
+# 카드사 라우팅 테이블
+# VAN은 카드번호 앞자리(BIN)로 발급 카드사를 판별해 해당 카드사로 전문을 보낸다.
+# 카드사 추가·BIN 대역 변경은 일상적인 일이라 코드가 아니라 설정으로 둔다.
+van:
+  routing:
+    issuers:
+      - code: A_CARD
+        name: 에이카드
+        url: ${CARD_ISSUER_URL:http://localhost:9000}
+        enabled: true
+        bins:
+          - "411111"
+          - "555555"
+          - "601111"
+          - "353011"
+          - "510510"
+          - "401288"
+
+      # 연동 예정 카드사 — 라우팅 대상은 되지만 실제 서버는 아직 없다.
+      # 라우팅이 정말로 대상을 바꾸는지 확인할 때 쓴다(96 하위 서비스 호출 실패로 떨어짐).
+      - code: B_CARD
+        name: 비카드
+        url: http://localhost:9100
+        enabled: true
+        bins:
+          - "622222"
 
 logging:
   level:

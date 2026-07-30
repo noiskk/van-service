@@ -23,9 +23,10 @@ public class RelayHistory {
     private final Deque<Entry> entries = new ConcurrentLinkedDeque<>();
 
     public void record(String channel, String cardNum, Long amount, String merchantId,
-                       String idempotencyKey, String responseCode, String message, boolean success) {
+                       String idempotencyKey, String responseCode, String message, boolean success,
+                       String issuerCode) {
         entries.addFirst(new Entry(LocalDateTime.now(), channel, cardNum, amount, merchantId,
-                idempotencyKey, responseCode, message, success));
+                idempotencyKey, responseCode, message, success, issuerCode));
         while (entries.size() > MAX) {
             entries.pollLast();
         }
@@ -48,5 +49,7 @@ public class RelayHistory {
         private final String responseCode;
         private final String message;
         private final boolean success;
+        /** 라우팅된 카드사 코드 */
+        private final String issuerCode;
     }
 }

@@ -1,5 +1,6 @@
 package com.bank.controller;
 
+import com.bank.routing.RoutingProperties;
 import com.bank.service.RelayHistory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -13,6 +14,7 @@ import java.util.List;
 public class VanConsoleController {
 
     private final RelayHistory relayHistory;
+    private final RoutingProperties routingProperties;
 
     @GetMapping("/")
     public String console(Model model) {
@@ -25,6 +27,7 @@ public class VanConsoleController {
         model.addAttribute("declined", recent.size() - approved);
         model.addAttribute("approvalRate", recent.isEmpty() ? "—"
                 : String.format("%.1f%%", approved * 100.0 / recent.size()));
+        model.addAttribute("issuers", routingProperties.getIssuers());
         model.addAttribute("tcpCount", recent.stream().filter(e -> "TCP".equals(e.getChannel())).count());
         model.addAttribute("amountTotal", recent.stream()
                 .filter(RelayHistory.Entry::isSuccess)
