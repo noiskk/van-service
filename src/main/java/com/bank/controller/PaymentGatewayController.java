@@ -1,8 +1,8 @@
 package com.bank.controller;
 
 import com.bank.api.CardIssuerClient;
-import com.bank.dto.FdsInspectRequest;
-import com.bank.dto.FdsInspectResponse;
+import com.bank.dto.CardApprovalRequest;
+import com.bank.dto.CardApprovalResponse;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
 import com.bank.exception.DownstreamCallFailedException;
@@ -66,12 +66,12 @@ public class PaymentGatewayController {
         }
 
         // 2. 요청 객체를 카드사 규격으로 변환
-        FdsInspectRequest approvalRequest = paymentGatwayService.createFdsRequest(request);
+        CardApprovalRequest approvalRequest = paymentGatwayService.createApprovalRequest(request);
 
         // 3. 판별된 카드사로 중계
         //    이상거래 차단/한도초과 등 비즈니스 결과는 200으로 오므로 그대로 relay된다.
         //    카드사가 진짜로 죽었을 때만 FeignException -> 시스템 실패로 전파.
-        FdsInspectResponse approvalResponse;
+        CardApprovalResponse approvalResponse;
         try {
             approvalResponse = cardIssuerClient.requestApproval(URI.create(issuer.getUrl()), approvalRequest);
         } catch (FeignException e) {

@@ -7,14 +7,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Schema(description = "FDS 승인 응답")
+@Schema(description = "카드사 승인 응답")
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FdsInspectResponse {
+public class CardApprovalResponse {
     private boolean success;          // boolean으로 변경
-    private String transactionId;     // FDS가 생성한 트랜잭션 ID
+    private String transactionId;     // 카드사(승인 서비스)가 생성한 트랜잭션 ID
     private String responseCode;      // 결과 코드
 
     // payment 서비스는 이 필드를 "message"라는 이름으로 내려준다.

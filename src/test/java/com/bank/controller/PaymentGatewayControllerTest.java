@@ -4,7 +4,7 @@ import com.bank.api.CardIssuerClient;
 import com.bank.routing.CardIssuer;
 import com.bank.routing.CardIssuerRouter;
 import com.bank.service.RelayHistory;
-import com.bank.dto.FdsInspectResponse;
+import com.bank.dto.CardApprovalResponse;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
 import com.bank.exception.GlobalExceptionHandler;
@@ -88,7 +88,7 @@ class PaymentGatewayControllerTest {
     @DisplayName("카드사 거절코드(61)가 51로 뭉개지지 않고 그대로 relay된다 (0단계 회귀)")
     void declineCode61_isPreserved() throws Exception {
         routesTo("http://localhost:9000");
-        when(cardIssuerClient.requestApproval(any(URI.class), any())).thenReturn(FdsInspectResponse.builder().build());
+        when(cardIssuerClient.requestApproval(any(URI.class), any())).thenReturn(CardApprovalResponse.builder().build());
         when(paymentGatwayService.createResponse(any(), eq(999_999L))).thenReturn(
                 PaymentGatewayResponse.builder()
                         .success(false)

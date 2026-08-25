@@ -1,7 +1,7 @@
 package com.bank.service;
 
-import com.bank.dto.FdsInspectRequest;
-import com.bank.dto.FdsInspectResponse;
+import com.bank.dto.CardApprovalRequest;
+import com.bank.dto.CardApprovalResponse;
 import com.bank.dto.PaymentGatewayRequest;
 import com.bank.dto.PaymentGatewayResponse;
 import lombok.RequiredArgsConstructor;
@@ -13,8 +13,8 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class PaymentGatwayService {
 
-    public FdsInspectRequest createFdsRequest(PaymentGatewayRequest request) {
-        return FdsInspectRequest.builder()
+    public CardApprovalRequest createApprovalRequest(PaymentGatewayRequest request) {
+        return CardApprovalRequest.builder()
                 .cardNum(request.getCardNum())
                 .amount(request.getAmount())
                 .merchantId(request.getMerchantId())
@@ -22,7 +22,7 @@ public class PaymentGatwayService {
                 .build();
     }
 
-    public PaymentGatewayResponse createResponse(FdsInspectResponse fdsResponse, Long originalAmount){
+    public PaymentGatewayResponse createResponse(CardApprovalResponse fdsResponse, Long originalAmount){
         String code = fdsResponse.getResponseCode();
 
         // 1. 성공 여부 판단: 코드가 "00"이거나 success가 true일 때만 성공

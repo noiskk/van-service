@@ -1,7 +1,7 @@
 package com.bank.api;
 
-import com.bank.dto.FdsInspectRequest;
-import com.bank.dto.FdsInspectResponse;
+import com.bank.dto.CardApprovalRequest;
+import com.bank.dto.CardApprovalResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,5 +21,5 @@ import java.net.URI;
 public interface CardIssuerClient {
 
     @PostMapping("/api/card/payments/process")
-    FdsInspectResponse requestApproval(URI issuerUrl, @RequestBody FdsInspectRequest request);
+    CardApprovalResponse requestApproval(URI issuerUrl, @RequestBody CardApprovalRequest request);
 }

@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FdsInspectRequest {
+public class CardApprovalRequest {
     private String cardNum;
     private Long amount;
     private String merchantId;
